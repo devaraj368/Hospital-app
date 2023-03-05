@@ -1,67 +1,85 @@
-import express from "express";
-import bodyParser from "body-parser";
-
+const express = require('express');
 const app = express();
-const PORT = 3000;
+const port = 7171;
+const fs = require('fs');
 
-import fs from 'fs';
+app.use(express.json());
+app.use(express.urlencoded({extended:true}));
 
-app.use(bodyParser.json());
+const datas = require('./data.json');
 
-// Read data from the JSON file
-const jsonData = fs.readFileSync("hospitalData.json", "utf-8");
-const data = JSON.parse(jsonData);
+//Read data
+app.get('/hospital', (req, res) => {
+    console.log("Data is read")
+  res.send(datas);
+});
 
-// GET operation to retrieve all hospitals
-const getAllHospitals = () => {
-  return data.hospitals;
-};
-//  console.log(getAllHospitals());
+// Add data
+app.post('/hospital',(req, res) =>{
+    datas.push(req.body);
+    fs.writeFile('data.json',JSON.stringify(datas),(err,resp)=>{
+        if(err){
+            res.send("Hospital data cannot be added")
+        }
+        else{
+            console.log("Data added")
+            res.send(datas)
+        }
+    })
+})
+// update data
 
+app.put('/hospital/:name',(req,res)=>{
+    let name =req.params.name;
+    let index=-1;
+    datas.forEach((item)=>{
+        if(item.Hospital_Name == name ){
+             index = 1;
+            item.Hospital_Name = req.body.Hospital_Name || item.Hospital_Name;
+            item.Patient_Count = req.body.Patient_Count || item.Patient_Count 
+            item.Hospital_Location = req.body.Hospital_Location ||  item.Hospital_Location 
+        }
+    })
+    fs.writeFile('data.json',JSON.stringify(datas),(err,resp)=>{
+        if(err){
+            res.send("Hospital data cannot be updated");
+        }
+        if(index===-1){
+            res.send(`hospital record of ${name} not found`)
+        }
+        else{
+            console.log("Data updated");
+            res.send(datas);
+            
+        }
+    })
+})
 
-// POST operation to add a new hospital
-const addHospital = (name, patientCount, location) => {
-  const newHospital = {
-    name: name,
-    patientCount: patientCount,
-    location: location
-  };
-  data.hospitals.push(newHospital);
-  fs.writeFileSync("hospitalData.json", JSON.stringify(data));
-  return newHospital;
-};
-// console.log(addHospital("PQR Hospital", 75, "Chicago"));
+  
+//delete data
 
-// PUT operation to update an existing hospital
-const updateHospital = (name, updatedHospital) => {
-  const index = data.hospitals.findIndex(hospital => hospital.name === name);
-  if (index !== -1) {
-    data.hospitals[index] = updatedHospital;
-    fs.writeFileSync("hospitalData.json", JSON.stringify(data));
-    return updatedHospital;
-  } else {
-    return "Hospital not found";
-  }
-};
-// console.log(updateHospital("ABC Hospital", { name: "ABC Medical Center", patientCount: 60, location: "New York" }));
+app.delete('/hospital/:name',(req,res)=>{
+    let name =req.params.name; 
+      let clear =datas.filter(item=>item.Hospital_Name !==name)  ;    
+    fs.writeFile('data.json',JSON.stringify(clear),(err,resp)=>{
+        if(err){
+            res.send("Hospital data was not deleted");
+        } 
+        if (clear.length === datas.length) {
+           
+            res.send(`No hospital with the name ${name}  found`);
+            return;
+          }     
+        else{
+            console.log("Hospital data deleted")
+            res.send(clear);
+        }
+    })
+})
 
-// DELETE operation to remove a hospital
-const deleteHospital = (name) => {
-  const index = data.hospitals.findIndex(hospital => hospital.name === name);
-  if (index !== -1) {
-    const deletedHospital = data.hospitals.splice(index, 1);
-    fs.writeFileSync("hospitalData.json", JSON.stringify(data));
-    return deletedHospital;
-  } else {
-    return "Hospital not found";
-  }
-};
-// console.log(deleteHospital("XYZ Hospital"));
-
-
-
-
-app.listen(PORT, console.log(`Server is running sucessfully on PORT ${PORT}`));
+app.listen(port, () => {
+  console.log(`Server listening on port ${port}`);
+});
 
 
 
